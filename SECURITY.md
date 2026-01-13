@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>เช็คชื่อนักเรียน</title>
+<style>
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(to right, #89f7fe, #66a6ff);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+}
+
+.container {
+  background: #fff;
+  padding: 30px;
+  border-radius: 15px;
+  box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+  max-width: 450px;
+  width: 100%;
+}
+
+h1 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 25px;
+}
+
+form input, form button, form select {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  transition: 0.3s;
+}
+
+form input:focus, form select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 10px rgba(0,123,255,0.3);
+  background-color: #f0f8ff;
+}
+
+form button {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: 0.3s;
+  font-weight: bold;
+}
+
+form button:hover {
+  background-color: #0056b3;
+}
+
+/* Toast Notification */
+.toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: #28a745;
+  color: white;
+  padding: 15px 25px;
+  border-radius: 25px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+  font-weight: bold;
+  font-size: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.5s ease, opacity 0.5s ease;
+  z-index: 9999;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.toast.error {
+  background: #dc3545;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>เช็คชื่อนักเรียน</h1>
+  <form id="studentForm">
+    <input type="text" id="firstname" placeholder="ชื่อ" required>
+    <input type="text" id="lastname" placeholder="นามสกุล" required>
+    <input type="time" id="checktime" required>
+    <input type="file" id="photo" accept="image/*">
+    <button type="submit">ส่งข้อมูล</button>
+  </form>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="toast"></div>
+
+<script>
+const form = document.getElementById('studentForm');
+const toast = document.getElementById('toast');
+
+// ใส่ Bot Token และ Chat ID ของคุณ
+const BOT_TOKEN = '8529508940:AAFQcQ4Ahpt-tKDkRcK7RNC-ZEZkuMCVsFY';
+const CHAT_ID = '8322549134';
+
+// ฟังก์ชันโชว์ Toast
+function showToast(message, isError=false){
+  toast.textContent = message;
+  toast.className = 'toast' + (isError ? ' error' : '') + ' show';
+  setTimeout(() => {
+    toast.className = 'toast' + (isError ? ' error' : '');
+  }, 3500); // หายไปอัตโนมัติหลัง 3.5 วินาที
+}
+
+form.addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  const firstname = document.getElementById('firstname').value.trim();
+  const lastname = document.getElementById('lastname').value.trim();
+  const time = document.getElementById('checktime').value;
+  const photo = document.getElementById('photo').files[0];
+
+  if (!firstname || !lastname || !time) {
+    showToast("กรุณากรอกชื่อ, นามสกุล และเวลาให้ครบ", true);
+    return;
+  }
+
+  const textMessage = `✅ *เช็คชื่อนักเรียน*\n*ชื่อ:* ${firstname}\n*นามสกุล:* ${lastname}\n*เวลาเช็ค:* ${time}`;
+
+  try {
+    const textResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        text: textMessage,
+        parse_mode: "Markdown"
+      })
+    });
+    const textData = await textResponse.json();
+    if(!textData.ok) throw new Error("ส่งข้อความล้มเหลว");
+
+    // ส่งรูปภาพถ้ามี
+    if(photo){
+      const formData = new FormData();
+      formData.append('chat_id', CHAT_ID);
+      formData.append('photo', photo);
+      formData.append('caption', `📸 รูปภาพของ ${firstname} ${lastname}\nเวลาเช็ค: ${time}`);
+
+      const photoResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+        method: 'POST',
+        body: formData
+      });
+      const photoData = await photoResponse.json();
+      if(!photoData.ok) throw new Error("ส่งรูปภาพล้มเหลว");
+    }
+
+    showToast("✅ ส่งข้อมูลเรียบร้อย!");
+    form.reset();
+
+  } catch(error){
+    console.error(error);
+    showToast("❌ เกิดข้อผิดพลาดในการส่งข้อมูล", true);
+  }
+});
+</script>
+</body>
+</html>
